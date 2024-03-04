@@ -10,7 +10,7 @@ export default function Root() {
             to={"/"}
           >
             <img src="/icon.svg" alt="" width={32} />
-            <span>SimpleAudioAnnotator</span>
+            <span>Simple Audio Annotator</span>
           </Link>
         </div>
       </div>

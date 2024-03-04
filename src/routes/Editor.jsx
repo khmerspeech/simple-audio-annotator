@@ -1,4 +1,9 @@
+import { useState } from "react";
+import { HighlightWithinTextarea } from "react-highlight-within-textarea";
+
 export default function Editor() {
+  const [value, setValue] = useState("X Y Z and then XYZ");
+  const onChange = (value) => setValue(value);
   return (
     <>
       <div className="flex flex-col gap-4">
@@ -14,7 +19,11 @@ export default function Editor() {
         <div className="gap-1 flex flex-col">
           <label className="font-medium text-sm text-slate-500">Speaker</label>
 
-          <select className="text-lg font-semibold border px-2 rounded py-2" name="speaker" id="speaker">
+          <select
+            className="text-lg font-semibold border px-2 rounded py-2"
+            name="speaker"
+            id="speaker"
+          >
             <option value="">1. Lia</option>
             <option value="">2. Dan</option>
             <option value="">3. Steve</option>

@@ -1,0 +1,25 @@
+{
+  "secret": "42",
+  "storage_dir": "storage",
+  "audio_processor": {
+    "sample_rate": 22050,
+    "channel": 1
+  },
+  "speakers": [
+    {
+      "id": "MEAS-TOLA",
+      "name": "1. Meas Tola"
+    },
+    {
+      "id": "SOK-DYNA",
+      "name": "2. Sok Dyna"
+    }
+  ],
+  "users": {
+    "demo": "demo",
+    "admin": "123456"
+  },
+  "reviewers": [
+    "admin"
+  ]
+}
