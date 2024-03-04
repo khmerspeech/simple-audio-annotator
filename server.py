@@ -11,7 +11,7 @@ import shutil
 import json
 import os
 import sqlite3
-from pypika import Table, Query, Column
+from pypika import Table, Query, Column, functions as fn, Order
 
 
 class UserAuthentication(BaseModel):
@@ -58,6 +58,34 @@ class Db:
       id=cur.lastrowid, filename=file_name, created_at=datetime.now(timezone.utc)
     )
 
+  @staticmethod
+  def map_article_item(values):
+    return ArticleItem(
+      id=values[0],
+      title=values[1],
+      content=values[2],
+      user_id=values[3],
+      speaker_id=values[4],
+      audio_id=values[5],
+    )
+
+  def paginate_articles(self, page: int, limit: int = 10):
+    offset = (page - 1) * limit
+    cur = self.con.cursor()
+    cur.execute(
+      Query.from_(self.article)
+      .orderby("id", order=Order.desc)
+      .offset(offset)
+      .limit(limit)
+      .select("*")
+      .get_sql()
+    )
+
+    items = list(map(Db.map_article_item, cur.fetchall()))
+    cur.execute(Query.from_(self.article).select(fn.Count("*")).get_sql())
+    total = cur.fetchone()
+    return items, (total[0] // limit) + 1
+
   def create_article(self, item: ArticleItem):
     query = (
       Query.into(self.article)
@@ -83,15 +111,7 @@ class Db:
     )
     values = cur.fetchone()
     cur.close()
-
-    return ArticleItem(
-      id=values[0],
-      title=values[1],
-      content=values[2],
-      user_id=values[3],
-      speaker_id=values[4],
-      audio_id=values[5],
-    )
+    return Db.map_article_item(values)
 
   def create_tables(self):
     create_audio_sql = (
@@ -255,8 +275,9 @@ def upload_audio_file(file: UploadFile):
 
 
 @app.get("/api/articles")
-def get_items(body: ArticleItem) -> List[ArticleItem]:
-  return body
+def get_items(page: int = 0):
+  items, total_page = app_db.paginate_articles(page)
+  return {"data": items, "total_pages": total_page}
 
 
 @app.post("/api/align")
