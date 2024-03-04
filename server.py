@@ -1,9 +1,20 @@
-from fastapi import FastAPI, File, Request, status, HTTPException, UploadFile, Response
+from fastapi.security import OAuth2PasswordBearer
+from fastapi import (
+  FastAPI,
+  Depends,
+  File,
+  Request,
+  status,
+  HTTPException,
+  UploadFile,
+  Response,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from uuid import uuid4
 from typing import List, Optional, BinaryIO
+from typing_extensions import Annotated
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from jose import JWTError, jwt
@@ -11,8 +22,11 @@ import shutil
 import json
 import os
 import sqlite3
+
 from pypika import Table, Query, Column, functions as fn, Order
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+ALGORITHM = "HS256"
 
 class UserAuthentication(BaseModel):
   username: str
@@ -97,7 +111,7 @@ class Db:
       .set(self.article.user_id, item.user_id)
       .get_sql()
     )
-    
+
     cur = self.con.cursor()
     cur.execute(query)
     return self.article_by_id(id)
@@ -105,15 +119,11 @@ class Db:
   def article_by_id(self, id: int):
     cur = self.con.cursor()
     cur.execute(
-      Query.from_(self.article)
-      .where(self.article.id == id)
-      .select("*")
-      .get_sql()
+      Query.from_(self.article).where(self.article.id == id).select("*").get_sql()
     )
     values = cur.fetchone()
     cur.close()
     return Db.map_article_item(values)
-  
 
   def create_article(self, item: ArticleItem):
     query = (
@@ -316,7 +326,6 @@ def update_item(id: int, body: ArticleItem):
   return app_db.update_article(id, body)
 
 
-
 @app.post("/api/authenticate")
 def authenticate(body: UserAuthentication, response: Response):
   if body.username not in config["users"]:
@@ -333,3 +342,19 @@ def authenticate(body: UserAuthentication, response: Response):
       key=config["secret"],
     )
   }
+
+@app.get("/api/profile")
+def profile(token: Annotated[str, Depends(oauth2_scheme)]):
+  credentials_exception = HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail="Could not validate credentials",
+    headers={"WWW-Authenticate": "Bearer"},
+  )
+  try:
+      payload = jwt.decode(token, config["secret"], algorithms=[ALGORITHM])
+      username: str = payload.get("sub")
+      if username is None:
+          raise credentials_exception    
+  except JWTError:
+      raise credentials_exception
+  return { "username": username }
