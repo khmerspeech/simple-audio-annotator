@@ -317,3 +317,4 @@ cython_debug/
 storage/
 
 *.db
+*.db-journal

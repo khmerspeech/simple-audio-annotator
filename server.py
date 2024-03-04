@@ -86,6 +86,35 @@ class Db:
     total = cur.fetchone()
     return items, (total[0] // limit) + 1
 
+  def update_article(self, id: int, item: ArticleItem):
+    query = (
+      Query.update(self.article)
+      .where(self.article.id == id)
+      .set(self.article.title, item.title)
+      .set(self.article.content, item.content)
+      .set(self.article.speaker_id, item.speaker_id)
+      .set(self.article.audio_id, item.audio_id)
+      .set(self.article.user_id, item.user_id)
+      .get_sql()
+    )
+    
+    cur = self.con.cursor()
+    cur.execute(query)
+    return self.article_by_id(id)
+
+  def article_by_id(self, id: int):
+    cur = self.con.cursor()
+    cur.execute(
+      Query.from_(self.article)
+      .where(self.article.id == id)
+      .select("*")
+      .get_sql()
+    )
+    values = cur.fetchone()
+    cur.close()
+    return Db.map_article_item(values)
+  
+
   def create_article(self, item: ArticleItem):
     query = (
       Query.into(self.article)
@@ -103,15 +132,7 @@ class Db:
     cur = self.con.cursor()
     cur.execute(query.get_sql())
     self.con.commit()
-    cur.execute(
-      Query.from_(self.article)
-      .where(self.article.id == cur.lastrowid)
-      .select("*")
-      .get_sql()
-    )
-    values = cur.fetchone()
-    cur.close()
-    return Db.map_article_item(values)
+    return self.article_by_id(cur.lastrowid)
 
   def create_tables(self):
     create_audio_sql = (
@@ -290,9 +311,10 @@ def create_item(body: ArticleItem):
   return app_db.create_article(body)
 
 
-@app.put("/api/articles/{id}")
-def update_item(id: str, body: ArticleItem):
-  return body
+@app.patch("/api/articles/{id}")
+def update_item(id: int, body: ArticleItem):
+  return app_db.update_article(id, body)
+
 
 
 @app.post("/api/authenticate")
