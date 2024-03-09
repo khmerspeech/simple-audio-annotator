@@ -1,0 +1,15 @@
+khmercut
+tqdm
+librosa
+Unidecode==1.1.1
+matplotlib==3.3.1
+ftfy==6.1.1
+samplerate
+pydub
+requests
+fastapi
+'uvicorn[standard]'
+chardet
+pypika
+python-jose
+python-multipart
