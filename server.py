@@ -1,14 +1,15 @@
 from fastapi.security import OAuth2PasswordBearer
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi import (
   FastAPI,
   Depends,
-  File,
   Request,
   status,
   HTTPException,
   UploadFile,
   Response,
 )
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -27,6 +28,7 @@ from pypika import Table, Query, Column, functions as fn, Order
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 ALGORITHM = "HS256"
+
 
 class UserAuthentication(BaseModel):
   username: str
@@ -50,10 +52,12 @@ class ArticleItem(BaseModel):
   audio_id: int
   speaker_id: str
 
+  audio: Optional[AudioItem] = None
   id: Optional[int] = None
   user_id: Optional[str] = None
   approved_at: Optional[datetime] = None
   approved_by: Optional[str] = None
+  created_at: Optional[str] = None
 
 
 class Db:
@@ -81,10 +85,17 @@ class Db:
       user_id=values[3],
       speaker_id=values[4],
       audio_id=values[5],
+      created_at=values[6],
     )
+
+  @staticmethod
+  def map_audio_item(values):
+    _id, filename, date = values
+    return AudioItem(id=_id, filename=filename, created_at=date)
 
   def paginate_articles(self, page: int, limit: int = 10):
     offset = (page - 1) * limit
+    print(f"{offset=}")
     cur = self.con.cursor()
     cur.execute(
       Query.from_(self.article)
@@ -123,7 +134,18 @@ class Db:
     )
     values = cur.fetchone()
     cur.close()
-    return Db.map_article_item(values)
+    article = Db.map_article_item(values)
+    article.audio = self.audio_by_id(article.audio_id)
+    return article
+
+  def audio_by_id(self, id: int):
+    cur = self.con.cursor()
+    cur.execute(
+      Query.from_(self.audio).where(self.audio.id == id).select("*").get_sql()
+    )
+    values = cur.fetchone()
+    cur.close()
+    return Db.map_audio_item(values)
 
   def create_article(self, item: ArticleItem):
     query = (
@@ -295,7 +317,7 @@ def stream_audio_file(request: Request, response: Response, audio_filename: str)
 
 @app.post("/api/audio")
 def upload_audio_file(file: UploadFile):
-  audio_file = str(uuid4()).replace("-", "") + file.filename
+  audio_file = str(uuid4()).replace("-", "") + "-" + file.filename
   audio_path = storage_dir / audio_file
   audio_path_tmp = storage_dir / Path(str(audio_file) + ".tmp")
 
@@ -311,6 +333,12 @@ def get_items(page: int = 0):
   return {"data": items, "total_pages": total_page}
 
 
+@app.get("/api/articles/{id}")
+def find_article(id: str):
+  item = app_db.article_by_id(id)
+  return item
+
+
 @app.post("/api/align")
 def align_item(body: ArticleItem):
   return None
@@ -321,7 +349,7 @@ def create_item(body: ArticleItem):
   return app_db.create_article(body)
 
 
-@app.patch("/api/articles/{id}")
+@app.post("/api/articles/{id}/update")
 def update_item(id: int, body: ArticleItem):
   return app_db.update_article(id, body)
 
@@ -343,6 +371,7 @@ def authenticate(body: UserAuthentication, response: Response):
     )
   }
 
+
 @app.get("/api/profile")
 def profile(token: Annotated[str, Depends(oauth2_scheme)]):
   credentials_exception = HTTPException(
@@ -351,10 +380,25 @@ def profile(token: Annotated[str, Depends(oauth2_scheme)]):
     headers={"WWW-Authenticate": "Bearer"},
   )
   try:
-      payload = jwt.decode(token, config["secret"], algorithms=[ALGORITHM])
-      username: str = payload.get("sub")
-      if username is None:
-          raise credentials_exception    
-  except JWTError:
+    payload = jwt.decode(token, config["secret"], algorithms=[ALGORITHM])
+    username: str = payload.get("sub")
+    if username is None:
       raise credentials_exception
-  return { "username": username }
+  except JWTError:
+    raise credentials_exception
+  return {"username": username}
+
+
+class SPAStaticFiles(StaticFiles):
+  async def get_response(self, path: str, scope):
+    try:
+      return await super().get_response(path, scope)
+    except (HTTPException, StarletteHTTPException) as ex:
+      if ex.status_code == 404:
+        return await super().get_response("index.html", scope)
+      else:
+        raise ex
+
+
+if os.path.exists("dist"):
+  app.mount("/", SPAStaticFiles(directory="dist", html=True), name="whatever")

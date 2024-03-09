@@ -1,52 +1,149 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { formatDate } from "date-fns";
+
+async function getArticle(page) {
+  const res = await fetch(new URL("/api/articles?page=" + page, API_BASE_URL));
+  const body = await res.json();
+  return body;
+}
+
+async function getProfile() {
+  const r = await fetch(new URL("/api/profile", API_BASE_URL), {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("saa:token")}`,
+    },
+  });
+  return await r.json();
+}
+
+function DataItem({ id, title, creator, created_at }) {
+  if (typeof created_at === "string") {
+    created_at = new Date(created_at);
+    created_at = formatDate(created_at, "dd-MM-yyyy hh:mm aa");
+  }
+
+  return (
+    <>
+      <Link
+        to={"/article/" + id}
+        className="border-b px-4 py-2 flex hover:bg-slate-50"
+      >
+        <div className="flex-1">
+          <h1 className="font-medium text-lg">{title}</h1>
+          <h2 className="text-slate-600 text-sm">
+            <span className="font-medium">{id}</span>
+            {"・"}
+            <span className="font-medium">{creator}</span>
+            {"・"}
+            <span>{created_at}</span>
+          </h2>
+        </div>
+      </Link>
+    </>
+  );
+}
 
 export default function Home() {
+  const [data, setData] = useState(null);
+  const [page, setPage] = useState(1);
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    (async function () {
+      const _profile = await getProfile();
+      setProfile(_profile);
+
+      const body = await getArticle(page);
+      setData(body);
+    })();
+  }, []);
+
+  const navigate = async (_page) => {
+    if (_page < 1) _page = 1;
+    if (_page > data.total_pages) _page = data.total_pages;
+    const body = await getArticle(_page);
+    setData(body);
+    setPage(_page);
+  };
+
+  const refreshData = async () => {
+    await navigate(page);
+  };
+
   return (
     <>
       <div className="flex flex-col gap-2">
-        <h1 className="text-slate-500 text-sm">Your Profile</h1>
-        <div className="flex items-center">
-          <h1 className="text-xl font-semibold flex-1">Sok Nha</h1>
+        <div className="flex flex-col border px-4 py-3 rounded">
+          <h1 className="text-slate-500 text-sm">Your Profile</h1>
+          <div className="flex gap-4">
+            <div className="flex items-center flex-1">
+              {profile ? (
+                <h1 className="text-xl font-semibold flex-1">
+                  {profile.username}
+                </h1>
+              ) : (
+                <h1 className="text-xl font-semibold flex-1">-</h1>
+              )}
+            </div>
+            <button className="text-sm font-medium px-2 py-1 text-red-600 bg-red-50 hover:bg-red-100 transition-all rounded">
+              Sign out
+            </button>
+          </div>
         </div>
-        <h1 className="text-slate-500 text-sm">Documents</h1>
+
         <div className="flex gap-2 flex-wrap">
           <Link
             to={"/create"}
-            className="bg-sky-500 text-sm font-medium text-white px-4 py-2 rounded-lg"
+            className="bg-sky-500 hover:bg-sky-600 text-sm font-medium text-white px-4 py-2 rounded-lg"
           >
             Create New
           </Link>
-          <button className=" text-sm font-medium border px-4 py-2 rounded-lg">
+          <button
+            disabled={!data}
+            onClick={refreshData}
+            className="hover:bg-slate-50 disabled:text-slate-400 disabled:bg-slate-100 text-sm font-medium border px-4 py-2 rounded-lg"
+          >
             Refresh
           </button>
         </div>
+        {data != null ? (
+          <div className="border py-2 mt-2 rounded-lg">
+            <h1 className="px-4 text-slate-500 text-sm">Documents</h1>
+            {Array.isArray(data && data.data)
+              ? data.data.map((item) => (
+                  <DataItem
+                    key={item.id}
+                    id={item.id}
+                    creator={item.user_id}
+                    created_at={new Date(item.created_at).toLocaleString()}
+                    title={item.title}
+                  />
+                ))
+              : null}
 
-        <div className="flex flex-col gap-2">
-          
-          <div className="border-b px-3 py-2 flex">
-            <div className="flex-1">
-              <h1 className="font-medium text-lg">
-                ផ្ទះជួលថ្លៃពេក!
-                និស្សិតសាកលវិទ្យាល័យម្នាក់សុខចិត្តជិះយន្តហោះទៅរៀនវិញ
-              </h1>
-              <h2 className="text-slate-600 text-sm">Sok Nha - <em>2 days ago</em></h2>
+            <div className="flex px-4 pt-3 pb-1 gap-2">
+              <h4 className="text-slate-500 flex-1">
+                Page {page} of {data && data.total_pages}
+              </h4>
+              <button
+                disabled={!data || page <= 1}
+                onClick={() => navigate(page - 1)}
+                className="hover:bg-sky-600 bg-sky-500 text-white px-2 py-1 inline-block disabled:bg-slate-200 disabled:text-slate-400 rounded text-sm"
+              >
+                Previous
+              </button>
+
+              <button
+                disabled={!data || page >= data.total_pages}
+                onClick={() => navigate(page + 1)}
+                className="hover:bg-sky-600 bg-sky-500 text-white px-2 py-1 inline-block disabled:bg-slate-200 disabled:text-slate-400 rounded text-sm"
+              >
+                Next
+              </button>
             </div>
-            <div className="text-orange-600  font-medium text-sm self-center px-2 py-1 rounded-lg bg-orange-50">In Review</div>
           </div>
-
-
-          <div className="border-b px-3 py-2 flex">
-            <div className="flex-1">
-              <h1 className="font-medium text-lg">
-                ផ្ទះជួលថ្លៃពេក!
-                និស្សិតសាកលវិទ្យាល័យម្នាក់សុខចិត្តជិះយន្តហោះទៅរៀនវិញ
-              </h1>
-              <h2 className="text-slate-600 text-sm">Sok Nha - <em>2 days ago</em></h2>
-            </div>
-            <div className="text-sky-600  font-medium text-sm self-center px-2 py-1 rounded-lg bg-sky-50">Approved</div>
-          </div>
-          
-        </div>
+        ) : null}
       </div>
     </>
   );

@@ -5,6 +5,8 @@ import Root from "./Root.jsx";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import Home from "./routes/Home.jsx";
 import Editor from "./routes/Editor.jsx";
+import EditorUpdate from "./routes/EditorUpdate.jsx";
+import Authenticate from "./routes/Authenticate.jsx";
 
 const router = createBrowserRouter([
   {
@@ -18,6 +20,14 @@ const router = createBrowserRouter([
       {
         path: "/create",
         element: <Editor />,
+      },
+      {
+        path: "/article/:id",
+        element: <EditorUpdate />,
+      },
+      {
+        path: "/login",
+        element: <Authenticate />,
       },
     ],
   },
