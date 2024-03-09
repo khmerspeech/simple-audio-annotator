@@ -17,6 +17,17 @@ export default function Root() {
       <div className="px-4 py-4 max-w-4xl mx-auto">
         <Outlet />
       </div>
+      <footer className="px-4 mt-10 border-t py-4 text-slate-500 mx-auto">
+        <p className="text-sm text-center">
+          An open-source project of{" "}
+          <a
+            href="https://github.com/khmerspeech/simple-audio-annotator"
+            className="font-medium text-lime-600"
+          >
+            [Khmer Speech Processing]
+          </a>
+        </p>
+      </footer>
     </div>
   );
 }

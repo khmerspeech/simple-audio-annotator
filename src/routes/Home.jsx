@@ -16,7 +16,7 @@ async function getProfile() {
   return await r.json();
 }
 
-function DataItem({ id, title, creator, created_at }) {
+function DataItem({ id, isOwner, title, creator, created_at }) {
   if (typeof created_at === "string") {
     created_at = new Date(created_at);
     created_at = formatDate(created_at, "dd-MM-yyyy hh:mm aa");
@@ -35,7 +35,11 @@ function DataItem({ id, title, creator, created_at }) {
           <h2 className="text-slate-600 text-sm">
             <span className="font-medium">#{id}</span>
             {"・"}
-            <span className="font-medium">{creator}</span>
+            {isOwner ? (
+              <span className="font-medium text-lime-600">{creator}</span>
+            ) : (
+              <span className="font-medium">{creator}</span>
+            )}
             {"・"}
             <span>{created_at}</span>
           </h2>
@@ -81,7 +85,7 @@ export default function Home() {
   return (
     <>
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col border px-4 py-3 rounded-lg">
+        <div className="flex flex-col border bg-slate-50 px-4 py-3 rounded-lg">
           <h1 className="text-slate-500 text-sm">Your Profile</h1>
           <div className="flex gap-4">
             <div className="flex items-center flex-1">
@@ -95,7 +99,7 @@ export default function Home() {
             </div>
             <button
               onClick={handleSignOut}
-              className="text-sm font-medium px-2 py-1 text-red-600 bg-red-50 hover:bg-red-100 transition-all rounded"
+              className="text-sm font-medium px-2 py-1 text-orange-600 border border-orange-400 bg-red-50 hover:bg-red-100 transition-all rounded"
             >
               Sign out
             </button>
@@ -126,6 +130,7 @@ export default function Home() {
                     key={item.id}
                     id={item.id}
                     creator={item.user_id}
+                    isOwner={profile.username == item.user_id}
                     created_at={new Date(item.created_at).toLocaleString()}
                     title={item.title}
                   />
@@ -139,7 +144,7 @@ export default function Home() {
               <button
                 disabled={!data || page <= 1}
                 onClick={() => navigate(page - 1)}
-                className="hover:bg-sky-600 bg-sky-500 text-white px-2 py-1 inline-block disabled:bg-slate-200 disabled:text-slate-400 rounded text-sm"
+                className="hover:bg-lime-700 bg-lime-600 text-white px-2 py-1 inline-block disabled:bg-slate-200 disabled:text-slate-400 rounded text-sm"
               >
                 Previous
               </button>
@@ -147,7 +152,7 @@ export default function Home() {
               <button
                 disabled={!data || page >= data.total_pages}
                 onClick={() => navigate(page + 1)}
-                className="hover:bg-sky-600 bg-sky-500 text-white px-2 py-1 inline-block disabled:bg-slate-200 disabled:text-slate-400 rounded text-sm"
+                className="hover:bg-lime-700 bg-lime-600 text-white px-2 py-1 inline-block disabled:bg-slate-200 disabled:text-slate-400 rounded text-sm"
               >
                 Next
               </button>
