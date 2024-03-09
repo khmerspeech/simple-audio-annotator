@@ -39,6 +39,7 @@ class AudioItem(BaseModel):
   id: int
   filename: str
   created_at: datetime
+  user_id: str
 
 
 class SpeakerItem(BaseModel):
@@ -60,6 +61,22 @@ class ArticleItem(BaseModel):
   created_at: Optional[str] = None
 
 
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+  credentials_exception = HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail="Could not validate credentials",
+    headers={"WWW-Authenticate": "Bearer"},
+  )
+  try:
+    payload = jwt.decode(token, config["secret"], algorithms=[ALGORITHM])
+    username: str = payload.get("sub")
+    if username is None:
+      raise credentials_exception
+  except JWTError:
+    raise credentials_exception
+  return username
+
+
 class Db:
   def __init__(self, db_file: str):
     self.con = sqlite3.connect(db_file, check_same_thread=False)
@@ -67,13 +84,17 @@ class Db:
     self.article = Table("article")
     self.create_tables()
 
-  def create_audio_item(self, file_name: str):
-    query = Query.into(self.audio).insert(None, file_name, datetime.now())
+  def create_audio_item(self, file_name: str, user_id: str):
+    query = Query.into(self.audio).insert(None, file_name, user_id, datetime.now())
     cur = self.con.cursor()
     cur.execute(str(query))
     cur.close()
+    self.con.commit()
     return AudioItem(
-      id=cur.lastrowid, filename=file_name, created_at=datetime.now(timezone.utc)
+      id=cur.lastrowid,
+      filename=file_name,
+      created_at=datetime.now(timezone.utc),
+      user_id=user_id,
     )
 
   @staticmethod
@@ -90,8 +111,8 @@ class Db:
 
   @staticmethod
   def map_audio_item(values):
-    _id, filename, date = values
-    return AudioItem(id=_id, filename=filename, created_at=date)
+    _id, filename, user_id, date = values
+    return AudioItem(id=_id, user_id=user_id, filename=filename, created_at=date)
 
   def paginate_articles(self, page: int, limit: int = 10):
     offset = (page - 1) * limit
@@ -125,6 +146,7 @@ class Db:
 
     cur = self.con.cursor()
     cur.execute(query)
+    self.con.commit()
     return self.article_by_id(id)
 
   def article_by_id(self, id: int):
@@ -174,6 +196,7 @@ class Db:
       .columns(
         Column("id", "INTEGER"),
         Column("filename", "TEXT"),
+        Column("user_id", "TEXT"),
         Column("created_at", "DATETIME"),
       )
     )
@@ -202,8 +225,6 @@ class Db:
     self.con.commit()
     cur.close()
 
-
-app_db = Db("app.db")
 
 
 def send_bytes_range_requests(
@@ -280,6 +301,8 @@ def range_requests_response(
 with open("saa.json") as infile:
   config = json.load(infile)
 
+app_db = Db(config["db_file"])
+
 # create storage file
 storage_dir = Path(config["storage_dir"])
 storage_dir.mkdir(exist_ok=True)
@@ -316,7 +339,9 @@ def stream_audio_file(request: Request, response: Response, audio_filename: str)
 
 
 @app.post("/api/audio")
-def upload_audio_file(file: UploadFile):
+def upload_audio_file(
+  file: UploadFile, username: Annotated[str, Depends(get_current_user)]
+):
   audio_file = str(uuid4()).replace("-", "") + "-" + file.filename
   audio_path = storage_dir / audio_file
   audio_path_tmp = storage_dir / Path(str(audio_file) + ".tmp")
@@ -324,7 +349,7 @@ def upload_audio_file(file: UploadFile):
   with open(audio_path_tmp, "wb") as outfile:
     outfile.write(file.file.read())
   shutil.move(str(audio_path_tmp), str(audio_path))
-  return app_db.create_audio_item(audio_file)
+  return app_db.create_audio_item(audio_file, user_id=username)
 
 
 @app.get("/api/articles")
@@ -345,12 +370,16 @@ def align_item(body: ArticleItem):
 
 
 @app.post("/api/articles")
-def create_item(body: ArticleItem):
+def create_item(body: ArticleItem, username: Annotated[str, Depends(get_current_user)]):
+  body.user_id = username
   return app_db.create_article(body)
 
 
 @app.post("/api/articles/{id}/update")
-def update_item(id: int, body: ArticleItem):
+def update_item(
+  id: int, body: ArticleItem, username: Annotated[str, Depends(get_current_user)]
+):
+  body.user_id = username
   return app_db.update_article(id, body)
 
 
@@ -373,19 +402,7 @@ def authenticate(body: UserAuthentication, response: Response):
 
 
 @app.get("/api/profile")
-def profile(token: Annotated[str, Depends(oauth2_scheme)]):
-  credentials_exception = HTTPException(
-    status_code=status.HTTP_401_UNAUTHORIZED,
-    detail="Could not validate credentials",
-    headers={"WWW-Authenticate": "Bearer"},
-  )
-  try:
-    payload = jwt.decode(token, config["secret"], algorithms=[ALGORITHM])
-    username: str = payload.get("sub")
-    if username is None:
-      raise credentials_exception
-  except JWTError:
-    raise credentials_exception
+def profile(username: Annotated[str, Depends(get_current_user)]):
   return {"username": username}
 
 

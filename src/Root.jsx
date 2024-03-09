@@ -3,7 +3,7 @@ import { Link, Outlet } from "react-router-dom";
 export default function Root() {
   return (
     <div>
-      <div className="bg-gradient-to-r  from-sky-500 to-sky-600 border-b">
+      <div className="bg-gradient-to-r  from-lime-600 to-teal-600 border-b">
         <div className="text-center py-3 px-4 mx-auto items-center max-w-4xl flex">
           <Link
             className="text-white font-semibold flex items-center gap-3"

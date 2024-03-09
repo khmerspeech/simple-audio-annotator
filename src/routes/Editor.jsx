@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { createHeaders } from "../authenticate.js";
 
 function resolveAudioFile(audio) {
   return new URL(`/api/storage/${audio.filename}`, API_BASE_URL);
@@ -69,6 +70,7 @@ export default function Editor({ id }) {
       const res = await fetch(new URL("/api/audio", API_BASE_URL), {
         method: "POST",
         body: formData,
+        headers: createHeaders(),
       });
       const body = await res.json();
       setAudioFile(body);
@@ -94,9 +96,9 @@ export default function Editor({ id }) {
           speaker_id: currentSpeaker,
           audio_id: audioFile.id,
         }),
-        headers: {
+        headers: createHeaders({
           "Content-Type": "application/json",
-        },
+        }),
       }
     );
 
@@ -180,7 +182,7 @@ export default function Editor({ id }) {
           <button
             onClick={handleFormSubmit}
             disabled={isFormInvalid}
-            className="bg-sky-500 text-sm font-medium text-white disabled:bg-slate-100 disabled:text-slate-400 px-4 py-2 rounded-lg"
+            className="bg-lime-600 hover:bg-lime-700 font-medium text-white disabled:bg-slate-100 disabled:text-slate-400 px-6 py-2 rounded-lg"
           >
             Save
           </button>

@@ -1,10 +1,7 @@
 {
   "secret": "42",
   "storage_dir": "storage",
-  "audio_processor": {
-    "sample_rate": 22050,
-    "channel": 1
-  },
+  "db_file": "app.db",
   "speakers": [
     {
       "id": "MEAS-TOLA",

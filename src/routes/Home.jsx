@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { formatDate } from "date-fns";
+import { createHeaders } from "../authenticate.js";
 
 async function getArticle(page) {
   const res = await fetch(new URL("/api/articles?page=" + page, API_BASE_URL));
@@ -10,9 +11,7 @@ async function getArticle(page) {
 
 async function getProfile() {
   const r = await fetch(new URL("/api/profile", API_BASE_URL), {
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem("saa:token")}`,
-    },
+    headers: createHeaders(),
   });
   return await r.json();
 }
@@ -29,10 +28,12 @@ function DataItem({ id, title, creator, created_at }) {
         to={"/article/" + id}
         className="border-b px-4 py-2 flex hover:bg-slate-50"
       >
-        <div className="flex-1">
-          <h1 className="font-medium text-lg">{title}</h1>
+        <div className="flex-1 overflow-hidden">
+          <h1 className="text-slate-700 font-medium text-lg truncate">
+            {title}
+          </h1>
           <h2 className="text-slate-600 text-sm">
-            <span className="font-medium">{id}</span>
+            <span className="font-medium">#{id}</span>
             {"・"}
             <span className="font-medium">{creator}</span>
             {"・"}
@@ -48,6 +49,7 @@ export default function Home() {
   const [data, setData] = useState(null);
   const [page, setPage] = useState(1);
   const [profile, setProfile] = useState(null);
+  const routerNavigate = useNavigate();
 
   useEffect(() => {
     (async function () {
@@ -71,10 +73,15 @@ export default function Home() {
     await navigate(page);
   };
 
+  const handleSignOut = () => {
+    localStorage.removeItem("saa:token");
+    routerNavigate("/login");
+  };
+
   return (
     <>
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-col border px-4 py-3 rounded">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col border px-4 py-3 rounded-lg">
           <h1 className="text-slate-500 text-sm">Your Profile</h1>
           <div className="flex gap-4">
             <div className="flex items-center flex-1">
@@ -86,7 +93,10 @@ export default function Home() {
                 <h1 className="text-xl font-semibold flex-1">-</h1>
               )}
             </div>
-            <button className="text-sm font-medium px-2 py-1 text-red-600 bg-red-50 hover:bg-red-100 transition-all rounded">
+            <button
+              onClick={handleSignOut}
+              className="text-sm font-medium px-2 py-1 text-red-600 bg-red-50 hover:bg-red-100 transition-all rounded"
+            >
               Sign out
             </button>
           </div>
@@ -95,7 +105,7 @@ export default function Home() {
         <div className="flex gap-2 flex-wrap">
           <Link
             to={"/create"}
-            className="bg-sky-500 hover:bg-sky-600 text-sm font-medium text-white px-4 py-2 rounded-lg"
+            className="bg-lime-600 hover:bg-lime-700 text-sm font-medium text-white px-4 py-2 rounded-lg"
           >
             Create New
           </Link>
@@ -108,7 +118,7 @@ export default function Home() {
           </button>
         </div>
         {data != null ? (
-          <div className="border py-2 mt-2 rounded-lg">
+          <div className="border py-2 rounded-lg">
             <h1 className="px-4 text-slate-500 text-sm">Documents</h1>
             {Array.isArray(data && data.data)
               ? data.data.map((item) => (

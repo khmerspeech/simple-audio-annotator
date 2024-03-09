@@ -1,12 +1,21 @@
-import "./main.css";
 import React from "react";
 import ReactDOM from "react-dom/client";
+import {
+  createBrowserRouter,
+  Navigate,
+  RouterProvider
+} from "react-router-dom";
+import "./main.css";
 import Root from "./Root.jsx";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import Home from "./routes/Home.jsx";
+import Authenticate from "./routes/Authenticate.jsx";
 import Editor from "./routes/Editor.jsx";
 import EditorUpdate from "./routes/EditorUpdate.jsx";
-import Authenticate from "./routes/Authenticate.jsx";
+import Home from "./routes/Home.jsx";
+
+function RequiresAuth({ children }) {
+  if (!localStorage.getItem("saa:token")) return <Navigate to="/login" />;
+  return children;
+}
 
 const router = createBrowserRouter([
   {
@@ -15,15 +24,27 @@ const router = createBrowserRouter([
     children: [
       {
         path: "/",
-        element: <Home />,
+        element: (
+          <RequiresAuth>
+            <Home />
+          </RequiresAuth>
+        ),
       },
       {
         path: "/create",
-        element: <Editor />,
+        element: (
+          <RequiresAuth>
+            <Editor />
+          </RequiresAuth>
+        ),
       },
       {
         path: "/article/:id",
-        element: <EditorUpdate />,
+        element: (
+          <RequiresAuth>
+            <EditorUpdate />
+          </RequiresAuth>
+        ),
       },
       {
         path: "/login",

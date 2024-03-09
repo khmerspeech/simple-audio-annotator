@@ -22,7 +22,6 @@ export default function Authenticate() {
         }),
         headers: {
           "content-type": "application/json",
-          
         },
       });
       const data = await response.json();
@@ -64,7 +63,7 @@ export default function Authenticate() {
           <button
             disabled={invalid || loading}
             onClick={handleLogin}
-            className="bg-sky-500 transition-all hover:bg-sky-400 disabled:bg-slate-50 disabled:text-slate-300 text-white px-2 py-3 rounded-lg text-sm font-medium"
+            className="bg-lime-600 transition-all hover:bg-lime-700 disabled:bg-slate-50 disabled:text-slate-300 text-white px-2 py-3 rounded-lg text-sm font-medium"
           >
             Login
           </button>
