@@ -14,14 +14,14 @@ async function getSpeakers() {
 
 export default function Editor({ id }) {
   const navigate = useNavigate();
-  const [speakers, setSpeakers] = useState(null);
+  const [speakers, setSpeakers] = useState("");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
 
   const [isUploading, setUploading] = useState(false);
   const [audioFile, setAudioFile] = useState(null);
-  const [currentSpeaker, setCurrentSpeaker] = useState(undefined);
-  const isFormInvalid = currentSpeaker == null || !title || !body || !audioFile;
+  const [currentSpeaker, setCurrentSpeaker] = useState("");
+  const isFormInvalid = !currentSpeaker || !title || !body || !audioFile;
 
   const audioPlayback = useMemo(
     () =>
@@ -38,9 +38,6 @@ export default function Editor({ id }) {
   useEffect(() => {
     getSpeakers().then((items) => {
       setSpeakers(items);
-      if (currentSpeaker == null && id == null) {
-        setCurrentSpeaker(items[0].id);
-      }
     });
 
     if (id) {
@@ -138,6 +135,7 @@ export default function Editor({ id }) {
             name="speaker"
             id="speaker"
           >
+            <option value="">(Select speaker)</option>
             {Array.isArray(speakers)
               ? speakers.map((item) => (
                   <option value={item.id} key={item.id}>
